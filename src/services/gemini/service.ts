@@ -1,9 +1,9 @@
 import { Quiz } from '../../types/quiz';
 import { GeminiClient } from './client';
-import { RETRY_CONFIG } from './config';
+import { retryConfig } from './config';
 import { createFallbackQuiz } from '../../utils/fallback';
-import { QUIZ_PROMPT } from '../../utils/constants';
 import { logger } from '../../utils/logger';
+import { validateQuizResponse } from '../../utils/validation';
 
 export class GeminiService {
   private client: GeminiClient;
@@ -21,12 +21,12 @@ export class GeminiService {
     } catch (error) {
       const nextAttempt = attempt + 1;
       const delay = Math.min(
-        RETRY_CONFIG.initialDelay * Math.pow(2, attempt - 1),
-        RETRY_CONFIG.maxDelay
+        retryConfig.initialDelay * Math.pow(2, attempt - 1),
+        retryConfig.maxDelay
       );
 
-      if (nextAttempt <= RETRY_CONFIG.maxRetries) {
-        logger.warn(`Retry attempt ${attempt}/${RETRY_CONFIG.maxRetries}`, { delay });
+      if (nextAttempt <= retryConfig.maxRetries) {
+        logger.warn(`Retry attempt ${attempt}/${retryConfig.maxRetries}`, { delay });
         await new Promise(resolve => setTimeout(resolve, delay));
         return this.retryWithBackoff(fn, nextAttempt);
       }
@@ -37,9 +37,10 @@ export class GeminiService {
 
   async generateQuiz(ageRange: string): Promise<Quiz> {
     try {
-      return await this.retryWithBackoff(() => 
-        this.client.generateQuiz(QUIZ_PROMPT, ageRange)
-      );
+      return await this.retryWithBackoff(async () => {
+        const response = await this.client.generateQuiz(ageRange);
+        return validateQuizResponse(response);
+      });
     } catch (error) {
       logger.error('All retry attempts failed', { error, ageRange });
       return createFallbackQuiz(ageRange);

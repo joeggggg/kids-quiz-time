@@ -2,30 +2,20 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Quiz } from '../types/quiz';
 import { quizData } from '../data/questions';
 import { QUIZ_PROMPT } from '../utils/constants';
-import { validateQuizStructure } from '../utils/validation';
-import { createFallbackQuiz } from '../utils/fallback';
-import { logger } from '../utils/logger';
-import { geminiConfig, validateApiKey } from '../config/gemini';
 
-// Get and validate API key
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-validateApiKey(apiKey);
-
-// Initialize Gemini AI with configuration
-const genAI = new GoogleGenerativeAI(apiKey);
+// Get API key from environment variables
+const GOOGLE_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
 
 /**
  * Generates a quiz using Gemini AI based on the specified age range
+ * @param ageRange - The target age range for the quiz
+ * @returns Promise<Quiz> - The generated quiz object
  */
 export async function generateQuiz(ageRange: string): Promise<Quiz> {
-  const model = genAI.getGenerativeModel({
-    model: geminiConfig.model.name,
-    generationConfig: geminiConfig.model.generationConfig
-  });
+  const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
   try {
-    logger.info('Generating quiz for', { ageRange });
-    
     const result = await model.generateContent([
       { text: QUIZ_PROMPT },
       { text: `The quiz should be appropriate for children aged ${ageRange}.` }
@@ -37,47 +27,54 @@ export async function generateQuiz(ageRange: string): Promise<Quiz> {
     try {
       const parsedQuiz = JSON.parse(text);
       
-      if (!validateQuizStructure(parsedQuiz)) {
-        logger.error('Invalid quiz structure received from API', { quiz: parsedQuiz });
+      if (!isValidQuiz(parsedQuiz)) {
+        console.error('Invalid quiz structure received from API');
         return createFallbackQuiz(ageRange);
       }
       
-      logger.info('Quiz generated successfully');
       return parsedQuiz;
-      
     } catch (parseError) {
-      logger.error('Failed to parse quiz JSON', { error: parseError, text });
+      console.error('Failed to parse quiz JSON:', parseError);
       return createFallbackQuiz(ageRange);
     }
   } catch (error) {
-    logger.error('Error generating quiz', { error, ageRange });
+    console.error('Error generating quiz:', error);
     return createFallbackQuiz(ageRange);
   }
 }
 
 /**
- * Handles retrying quiz generation with exponential backoff
+ * Validates the structure of a quiz object
+ * @param quiz - The quiz object to validate
+ * @returns boolean - Whether the quiz object is valid
  */
-export async function retryQuizGeneration(
-  ageRange: string, 
-  maxRetries = 3,
-  initialDelay = 1000
-): Promise<Quiz> {
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      return await generateQuiz(ageRange);
-    } catch (error) {
-      const delay = initialDelay * Math.pow(2, attempt);
-      logger.warn(`Retry attempt ${attempt + 1}/${maxRetries}`, { delay });
-      
-      if (attempt < maxRetries - 1) {
-        await new Promise(resolve => setTimeout(resolve, delay));
-        continue;
-      }
-      
-      throw error;
-    }
-  }
-  
-  return createFallbackQuiz(ageRange);
+function isValidQuiz(quiz: any): quiz is Quiz {
+  return (
+    quiz &&
+    typeof quiz.quizId === 'string' &&
+    typeof quiz.testerAge === 'string' &&
+    typeof quiz.questionQty === 'number' &&
+    Array.isArray(quiz.questions) &&
+    quiz.questions.every((q: any) =>
+      typeof q.id === 'number' &&
+      typeof q.question === 'string' &&
+      Array.isArray(q.choice) &&
+      q.choice.length >= 2 &&
+      typeof q.answer === 'string' &&
+      typeof q.category === 'string'
+    )
+  );
+}
+
+/**
+ * Creates a fallback quiz when AI generation fails
+ * @param ageRange - The target age range for the quiz
+ * @returns Quiz - A fallback quiz object
+ */
+function createFallbackQuiz(ageRange: string): Quiz {
+  return {
+    ...quizData,
+    testerAge: ageRange,
+    quizId: `Q${Date.now()}`,
+  };
 }

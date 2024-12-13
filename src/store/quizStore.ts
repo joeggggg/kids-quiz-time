@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { AgeRange, QuizState } from '../types/quiz';
-import { retryQuizGeneration } from '../services/gemini';
-import { logger } from '../utils/logger';
+import { generateQuiz } from '../services/gemini';
 
 export const useQuizStore = create<QuizState>((set) => ({
   currentIndex: 0,
@@ -14,11 +13,8 @@ export const useQuizStore = create<QuizState>((set) => ({
 
   setAgeRange: async (age: AgeRange) => {
     set({ isLoading: true, error: null, ageRange: age });
-    
     try {
-      const quiz = await retryQuizGeneration(age);
-      logger.info('Quiz loaded successfully', { age });
-      
+      const quiz = await generateQuiz(age);
       set({ 
         quiz, 
         isLoading: false, 
@@ -27,11 +23,9 @@ export const useQuizStore = create<QuizState>((set) => ({
         error: null 
       });
     } catch (error) {
-      const errorMessage = 'Failed to generate quiz. Please try again.';
-      logger.error(errorMessage, { error, age });
-      
+      console.error('Quiz generation error:', error);
       set({ 
-        error: errorMessage,
+        error: 'Something went wrong while generating the quiz. Please try again.',
         isLoading: false 
       });
     }

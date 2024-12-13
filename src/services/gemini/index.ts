@@ -8,4 +8,4 @@ export async function generateQuiz(ageRange: string): Promise<Quiz> {
   return geminiService.generateQuiz(ageRange);
 }
 
-export * from './config';
+export * from './types';

@@ -1,8 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { geminiConfig } from './config';
-import { validateApiKey, validateResponse } from './validation';
-import { Quiz } from '../../types/quiz';
+import { modelConfig, systemPrompt } from './config';
 import { logger } from '../../utils/logger';
+import { validateApiKey } from '../../utils/validation';
 
 export class GeminiClient {
   private client: GoogleGenerativeAI;
@@ -12,24 +11,26 @@ export class GeminiClient {
     validateApiKey(apiKey);
     this.client = new GoogleGenerativeAI(apiKey);
     this.model = this.client.getGenerativeModel({
-      model: geminiConfig.model.name,
-      generationConfig: geminiConfig.model.generationConfig
+      model: modelConfig.name,
+      generationConfig: modelConfig.generationConfig,
+      safetySettings: modelConfig.safetySettings,
     });
   }
 
-  async generateQuiz(prompt: string, ageRange: string): Promise<Quiz> {
+  async generateQuiz(ageRange: string): Promise<string> {
     try {
       logger.info('Generating quiz', { ageRange });
 
-      const result = await this.model.generateContent([
-        { text: prompt },
+      const chatSession = this.model.startChat({
+        generationConfig: modelConfig.generationConfig,
+      });
+
+      const result = await chatSession.sendMessage([
+        { text: systemPrompt },
         { text: `The quiz should be appropriate for children aged ${ageRange}.` }
       ]);
 
-      const response = await result.response;
-      const text = response.text();
-
-      return validateResponse(text);
+      return result.response.text();
     } catch (error) {
       logger.error('Failed to generate quiz', { error, ageRange });
       throw error;

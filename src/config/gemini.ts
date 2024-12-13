@@ -1,31 +1,46 @@
+import { HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
+
 /**
  * Gemini AI Configuration
  */
 export const geminiConfig = {
   // Model configuration
   model: {
-    name: "gemini-exp-1206",
+    name: "gemini-2.0-flash-exp",
+    systemInstruction: "you are the master of quiz creator for kid to learn STEAM",
     generationConfig: {
-      temperature: 0.85,        // Controls randomness (0-1)
+      temperature: 0.8,      // Controls creativity vs consistency
       topP: 0.95,           // Nucleus sampling parameter
-      topK: 64,             // Top-k sampling parameter
-      maxOutputTokens: 8192, // Maximum length of generated text
+      topK: 40,             // Top-k sampling parameter
+      maxOutputTokens: 8192, // Maximum response length
       responseMimeType: "text/plain"
-    }
-  },
-  
-  // Safety settings (if needed)
-  safetySettings: {
-    // Add any safety thresholds here
+    },
+    safetySettings: [
+      {
+        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+      },
+    ],
   }
 };
 
 /**
- * Validates the Gemini API key
+ * Retry configuration for API calls
  */
-export function validateApiKey(apiKey: string | undefined): apiKey is string {
-  if (!apiKey) {
-    throw new Error('Gemini API key is required. Please set VITE_GEMINI_API_KEY in your environment.');
-  }
-  return true;
-}
+export const retryConfig = {
+  maxRetries: 3,
+  initialDelay: 1000,
+  maxDelay: 5000
+};

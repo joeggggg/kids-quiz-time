@@ -1,40 +1,61 @@
-import { Quiz, QuizQuestion } from '../types/quiz';
+import { Quiz } from '../types/quiz';
 import { logger } from './logger';
 
-/**
- * Validates a quiz question structure
- */
-export function validateQuizQuestion(question: any): question is QuizQuestion {
-  const isValid = 
-    typeof question.id === 'number' &&
-    typeof question.question === 'string' &&
-    Array.isArray(question.choice) &&
-    question.choice.length >= 2 &&
-    typeof question.answer === 'string' &&
-    typeof question.category === 'string';
-
-  if (!isValid) {
-    logger.warn('Invalid question structure', { question });
+export class ValidationError extends Error {
+  constructor(message: string, public data?: unknown) {
+    super(message);
+    this.name = 'ValidationError';
   }
-
-  return isValid;
 }
 
-/**
- * Validates the complete quiz structure
- */
-export function validateQuizStructure(quiz: any): quiz is Quiz {
-  const isValid = 
+export function validateApiKey(apiKey: string | undefined): apiKey is string {
+  if (!apiKey) {
+    throw new ValidationError('Gemini API key is required');
+  }
+  return true;
+}
+
+export function validateQuizResponse(response: string): Quiz {
+  try {
+    const quiz = JSON.parse(response);
+    
+    if (!isValidQuizStructure(quiz)) {
+      throw new ValidationError('Invalid quiz structure', quiz);
+    }
+    
+    return quiz;
+  } catch (error) {
+    logger.error('Failed to validate quiz response', { error, response });
+    throw new ValidationError('Invalid quiz response', { error, response });
+  }
+}
+
+function isValidQuizStructure(quiz: any): quiz is Quiz {
+  const hasRequiredFields = 
     quiz &&
     typeof quiz.quizId === 'string' &&
     typeof quiz.testerAge === 'string' &&
     typeof quiz.questionQty === 'number' &&
-    Array.isArray(quiz.questions) &&
-    quiz.questions.every(validateQuizQuestion);
+    Array.isArray(quiz.questions);
 
-  if (!isValid) {
-    logger.warn('Invalid quiz structure', { quiz });
+  if (!hasRequiredFields) {
+    logger.warn('Missing required quiz fields', { quiz });
+    return false;
   }
 
-  return isValid;
+  const hasValidQuestions = quiz.questions.every((q: any) =>
+    typeof q.id === 'number' &&
+    typeof q.question === 'string' &&
+    Array.isArray(q.choice) &&
+    q.choice.length >= 2 &&
+    typeof q.answer === 'string' &&
+    typeof q.category === 'string'
+  );
+
+  if (!hasValidQuestions) {
+    logger.warn('Invalid question structure found', { questions: quiz.questions });
+    return false;
+  }
+
+  return true;
 }

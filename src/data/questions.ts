@@ -3,7 +3,7 @@ import { Quiz } from '../types/quiz';
 export const quizData: Quiz = {
   quizId: "Q1004",
   testerAge: "from 4 to 6",
-  questionQty: 10,
+  questionQty: 5,
   quizType: "CHOICES",
   questions: [
     {
