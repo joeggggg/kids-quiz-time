@@ -1,4 +1,3 @@
-import React from 'react';
 import { QuizContainer } from './components/QuizContainer';
 import { AgeSelector } from './components/AgeSelector';
 import { LoadingScreen } from './components/LoadingScreen';

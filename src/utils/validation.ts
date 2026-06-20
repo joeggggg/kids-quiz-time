@@ -30,30 +30,40 @@ export function validateQuizResponse(response: string): Quiz {
   }
 }
 
-function isValidQuizStructure(quiz: any): quiz is Quiz {
-  const hasRequiredFields = 
-    quiz &&
-    typeof quiz.quizId === 'string' &&
-    typeof quiz.testerAge === 'string' &&
-    typeof quiz.questionQty === 'number' &&
-    Array.isArray(quiz.questions);
+function isValidQuizStructure(quiz: unknown): quiz is Quiz {
+  if (!quiz || typeof quiz !== 'object') {
+    logger.warn('Quiz response is not an object', { quiz });
+    return false;
+  }
+  const qObj = quiz as Record<string, unknown>;
 
-  if (!hasRequiredFields) {
+  const questions = qObj.questions;
+  const hasRequiredFields = 
+    typeof qObj.quizId === 'string' &&
+    typeof qObj.testerAge === 'string' &&
+    typeof qObj.questionQty === 'number' &&
+    Array.isArray(questions);
+
+  if (!hasRequiredFields || !Array.isArray(questions)) {
     logger.warn('Missing required quiz fields', { quiz });
     return false;
   }
 
-  const hasValidQuestions = quiz.questions.every((q: any) =>
-    typeof q.id === 'number' &&
-    typeof q.question === 'string' &&
-    Array.isArray(q.choice) &&
-    q.choice.length >= 2 &&
-    typeof q.answer === 'string' &&
-    typeof q.category === 'string'
-  );
+  const hasValidQuestions = questions.every((q: unknown) => {
+    if (!q || typeof q !== 'object') return false;
+    const qItem = q as Record<string, unknown>;
+    return (
+      typeof qItem.id === 'number' &&
+      typeof qItem.question === 'string' &&
+      Array.isArray(qItem.choice) &&
+      qItem.choice.length >= 2 &&
+      typeof qItem.answer === 'string' &&
+      typeof qItem.category === 'string'
+    );
+  });
 
   if (!hasValidQuestions) {
-    logger.warn('Invalid question structure found', { questions: quiz.questions });
+    logger.warn('Invalid question structure found', { questions });
     return false;
   }
 

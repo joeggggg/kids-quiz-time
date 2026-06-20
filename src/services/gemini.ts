@@ -48,21 +48,26 @@ export async function generateQuiz(ageRange: string): Promise<Quiz> {
  * @param quiz - The quiz object to validate
  * @returns boolean - Whether the quiz object is valid
  */
-function isValidQuiz(quiz: any): quiz is Quiz {
+function isValidQuiz(quiz: unknown): quiz is Quiz {
+  if (!quiz || typeof quiz !== 'object') return false;
+  const qObj = quiz as Record<string, unknown>;
   return (
-    quiz &&
-    typeof quiz.quizId === 'string' &&
-    typeof quiz.testerAge === 'string' &&
-    typeof quiz.questionQty === 'number' &&
-    Array.isArray(quiz.questions) &&
-    quiz.questions.every((q: any) =>
-      typeof q.id === 'number' &&
-      typeof q.question === 'string' &&
-      Array.isArray(q.choice) &&
-      q.choice.length >= 2 &&
-      typeof q.answer === 'string' &&
-      typeof q.category === 'string'
-    )
+    typeof qObj.quizId === 'string' &&
+    typeof qObj.testerAge === 'string' &&
+    typeof qObj.questionQty === 'number' &&
+    Array.isArray(qObj.questions) &&
+    qObj.questions.every((q: unknown) => {
+      if (!q || typeof q !== 'object') return false;
+      const qItem = q as Record<string, unknown>;
+      return (
+        typeof qItem.id === 'number' &&
+        typeof qItem.question === 'string' &&
+        Array.isArray(qItem.choice) &&
+        qItem.choice.length >= 2 &&
+        typeof qItem.answer === 'string' &&
+        typeof qItem.category === 'string'
+      );
+    })
   );
 }
 

@@ -24,4 +24,8 @@ export interface QuizState {
   isLoading: boolean;
   error: string | null;
   quiz: Quiz | null;
+  setAgeRange: (age: AgeRange) => Promise<void>;
+  nextQuestion: () => void;
+  previousQuestion: () => void;
+  toggleFlip: () => void;
 }
