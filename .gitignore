@@ -32,7 +32,8 @@ dist-ssr
 .env.production.local
 
 # Documentation
-docs/
+docs/*
+!docs/assets/
 
 # TypeScript cache
 *.tsbuildinfo
